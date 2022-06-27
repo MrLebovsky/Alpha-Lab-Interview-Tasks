@@ -21,7 +21,9 @@ public class AlphaLabTask3Application implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        primeNumberService.sequentialAlgorithm();
-        primeNumberService.parallelStreamAlgorithm();
+        //primeNumberService.sequentialAlgorithm();
+        //primeNumberService.defaultPoolParallelStreamAlgorithm();
+        //primeNumberService.parallelStreamAlgorithm();
+        primeNumberService.parallelAlgorithm();
     }
 }
