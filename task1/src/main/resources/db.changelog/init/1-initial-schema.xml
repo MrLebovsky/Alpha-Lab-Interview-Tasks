@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.6.xsd">
+
+    <changeSet id="CREATE_PERSONS_TABLE" author="RKrasnoslabodtsev">
+        <createSequence sequenceName="PERSON_ID_SEQ" startValue="1"/>
+        <createTable tableName="PERSON">
+            <column name="ID" type="BIGINT" defaultValueSequenceNext="PERSON_ID_SEQ">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="FIRST_NAME" type="VARCHAR(30)"/>
+            <column name="LAST_NAME" type="VARCHAR(30)"/>
+            <column name="MIDDLE_NAME" type="VARCHAR(30)"/>
+            <column name="BIRTH_DATE" type="DATE"/>
+            <column name="DELETED" type="BOOLEAN" defaultValue="false"/>
+            <column name="CREATED_TS" type="TIMESTAMP"/>
+            <column name="UPDATED_TS" type="TIMESTAMP"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="CREATE_DOCUMENTS_TABLE" author="RKrasnoslabodtsev">
+        <createSequence sequenceName="DOCUMENT_ID_SEQ" startValue="1"/>
+        <createTable tableName="DOCUMENT">
+            <column name="ID" type="BIGINT" defaultValueSequenceNext="DOCUMENT_ID_SEQ">
+                <constraints nullable="false" primaryKey="true"/>
+            </column>
+            <column name="DOCUMENT_TYPE" type="VARCHAR(50)"/>
+            <column name="DOCUMENT_SERIES" type="VARCHAR(30)"/>
+            <column name="DOCUMENT_NUMBER" type="VARCHAR(30)"/>
+            <column name="ISSUE_DATE" type="DATE"/>
+            <column name="DELETED" type="BOOLEAN" defaultValue="false"/>
+            <column name="CREATED_TS" type="TIMESTAMP"/>
+            <column name="UPDATED_TS" type="TIMESTAMP"/>
+            <column name="PERSON_ID" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="PERSON_ID" baseTableName="DOCUMENT"
+                                 constraintName="FK_DOCUMENT_PERSON_LINK"
+                                 referencedColumnNames="ID"
+                                 referencedTableName="PERSON"/>
+    </changeSet>
+
+    <changeSet id="INIT_DATA" author="RKrasnoslabodtsev" >
+        <sqlFile endDelimiter="\nGO" path="add-person.sql" relativeToChangelogFile="true"
+                 splitStatements="true" stripComments="true"/>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,27 @@
+spring:
+  mvc:
+    pathmatch:
+      matching-strategy: ant_path_matcher
+  application:
+    name: Alpha Lab Interview Tasks
+  datasource:
+    url: jdbc:postgresql://localhost:5432/alpha_lab?currentSchema=interview
+    username: postgres
+    password: 123
+    driverClassName: org.postgresql.Driver
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQL82Dialect
+    show-sql: true
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+      hibernate.globally_quoted_identifiers: true
+  liquibase:
+    enabled: true
+    drop-first: false
+    parameters:
+      schema: interview
+    default-schema: ${spring.liquibase.parameters.schema}
+    liquibase-schema: ${spring.liquibase.parameters.schema}
+    change-log: classpath:db.changelog/db.changelog.xml
