@@ -6,16 +6,16 @@ import org.springframework.stereotype.Service;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
-import java.util.stream.IntStream;
+import java.nio.file.Paths;
+import java.util.Collection;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 
 import static com.alpha.lab.interview.utils.FileWriterUtils.writeToFile;
 import static com.alpha.lab.interview.utils.MathUtils.isPrime;
-import static java.nio.file.StandardOpenOption.APPEND;
-import static java.nio.file.StandardOpenOption.CREATE;
 
 @Service
 public class PrimeNumberService {
@@ -23,16 +23,7 @@ public class PrimeNumberService {
     private static final int START_VALUE = 0;
     private static final int FINISH_VALUE = 1000000;
 
-    private static final int THREADS_COUNT = 4;
-
-    private void streamForEach(FileWriter file) {
-        IntStream.range(START_VALUE, FINISH_VALUE)
-                .parallel()
-                .forEach(i -> {
-                    if (isPrime(i))
-                        writeToFile(file, i);
-                });
-    }
+    private static final int THREADS_COUNT = 6;
 
     @Benchmark
     public void sequentialAlgorithm() throws IOException {
@@ -45,48 +36,77 @@ public class PrimeNumberService {
     }
 
     @Benchmark
-    public void defaultPoolParallelStreamAlgorithm() throws IOException {
-        try (FileWriter file = new FileWriter("result2.txt")) {
-            streamForEach(file);
-        }
-    }
-
-    @Benchmark
-    public void parallelStreamAlgorithm() throws IOException {
-        try (FileWriter file = new FileWriter("result2.txt")) {
-            new ForkJoinPool(THREADS_COUNT).submit(() -> streamForEach(file));
-        }
-    }
-
-    @Benchmark
     public void parallelAlgorithm() {
-        ExecutorService executor = Executors.newFixedThreadPool(THREADS_COUNT);
-        int count = FINISH_VALUE / THREADS_COUNT;
-        for (int i = 0; i < THREADS_COUNT; i++) {
-            final int number = i;
-            executor.execute(() -> {
-                String threadResult = "";
-                try {
-                    doThreadWork(number, count, threadResult);
-                    Files.writeString(Path.of("result3.txt"), threadResult, CREATE, APPEND);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        }
+
+        // запустим все фичи (они активно пишут в свои файлы на диск)
+        List<Future<String>> futures = collectFutures();
+
+        // дождемся, когда все файлы готовы
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+
+        // объединим результаты всех потоков
+        // последовательность соблюдается, потому что мы знаем очередность определения задачи для каждого потока
+        unionThreadsResultToOneFile(futures);
     }
 
-    private void doThreadWork(int number, int count, String threadResult) {
-        try (FileWriter file = new FileWriter(Thread.currentThread().getName().concat(".txt"))) {
-            for (int j = number * count; j < number * count + count; j++) {
-                if (isPrime(j)) {
-                    String currentIterationResult = j + " ";
-                    file.write(currentIterationResult);
-                    threadResult = threadResult.concat(currentIterationResult);
-                }
-            }
+    private void unionThreadsResultToOneFile(List<Future<String>> futures) {
+        try (FileWriter file = new FileWriter("result2.txt")) {
+            futures.stream()
+                    .map(future -> {
+                        try {
+                            return future.get();
+                        } catch (InterruptedException | ExecutionException e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .map(Paths::get)
+                    .map(path -> {
+                        try {
+                            return Files.readAllLines(path);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .flatMap(Collection::stream)
+                    .forEach(line -> {
+                        try {
+                            file.write(line);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+
     }
+
+
+    private LinkedList<Future<String>> collectFutures() {
+        LinkedList<Future<String>> futures = new LinkedList<>();
+        int count = FINISH_VALUE / THREADS_COUNT;
+        for (int i = 0; i < THREADS_COUNT; i++) {
+            final int number = i;
+            CompletableFuture<String> future = CompletableFuture.supplyAsync(() -> {
+                String fileName;
+                try {
+                    fileName = Thread.currentThread().getName().concat(".txt");
+                    try (FileWriter file = new FileWriter(fileName)) {
+                        for (int j = number * count; j < number * count + count; j++) {
+                            if (isPrime(j))
+                                writeToFile(file, j);
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new IllegalStateException(e);
+                }
+
+                return fileName;
+            });
+            futures.add(future);
+        }
+
+        return futures;
+    }
+
 }

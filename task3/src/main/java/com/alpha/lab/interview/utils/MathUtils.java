@@ -1,16 +1,14 @@
 package com.alpha.lab.interview.utils;
 
+import java.util.stream.IntStream;
+
 public class MathUtils {
-    private MathUtils() {}
+    private MathUtils() {
+    }
 
-    static int i = 0;
-
-    public static boolean isPrime(int n) {
-        if (n % 2 == 0) return false;
-        for (int i = 3; i * i <= n; i += 2) {
-            if (n % i == 0)
-                return false;
-        }
-        return true;
+    public static boolean isPrime(int num) {
+        int limit = (int) (Math.sqrt(num) + 1);
+        return num == 2 || num > 1 && IntStream.range(2, limit)
+                .noneMatch(divisor -> num % divisor == 0);
     }
 }
